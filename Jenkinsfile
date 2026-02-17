@@ -13,7 +13,7 @@ pipeline {
         AWS_REGION = 'us-east-1'
         DOCKERHUB_USERNAME = 'susan22283'
 
-        IMAGE_NAME  = 'prime-choice-app'
+        IMAGE_NAME = 'prime-choice-app'
         EKS_CLUSTER_NAME = 'my-cluster'
         TAG = "${env.BUILD_NUMBER}"
     }
@@ -26,6 +26,22 @@ pipeline {
             }
         }
 
+        stage('Verify AWS Identity') {
+            when { expression { params.DESTROY_INFRA == false } }
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+                    sh '''
+                      export AWS_DEFAULT_REGION=$AWS_REGION
+                      aws --version
+                      aws sts get-caller-identity
+                    '''
+                }
+            }
+        }
+
         stage('Terraform Init & Apply (EKS)') {
             when { expression { params.DESTROY_INFRA == false } }
             steps {
@@ -34,6 +50,7 @@ pipeline {
                      credentialsId: 'aws-credentials']
                 ]) {
                     sh '''
+                      export AWS_DEFAULT_REGION=$AWS_REGION
                       terraform init
                       terraform validate
                       terraform apply -auto-approve
@@ -50,8 +67,6 @@ pipeline {
                      credentialsId: 'aws-credentials']
                 ]) {
                     sh '''
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
                         export AWS_DEFAULT_REGION=$AWS_REGION
 
                         aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
@@ -98,11 +113,9 @@ pipeline {
                 dir('kubernetes') {
                     sh """
                       echo "Updating Django image tag..."
-
                       sed -i "s|image: .*|image: $DOCKERHUB_USERNAME/$IMAGE_NAME:$TAG|g" django-deployment.yaml
 
                       echo "Applying Kubernetes manifests..."
-
                       kubectl apply -f namespace.yaml
 
                       kubectl apply -f postgres-secret.yaml
@@ -118,7 +131,6 @@ pipeline {
                       kubectl apply -f django-service.yaml
 
                       echo "Waiting for deployments to be ready..."
-
                       kubectl rollout status deployment/postgres -n django-app --timeout=300s
                       kubectl rollout status deployment/django -n django-app --timeout=300s
                     """
@@ -134,6 +146,7 @@ pipeline {
                      credentialsId: 'aws-credentials']
                 ]) {
                     sh '''
+                      export AWS_DEFAULT_REGION=$AWS_REGION
                       terraform init
                       terraform destroy -auto-approve
                     '''
