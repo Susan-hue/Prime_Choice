@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: django
-          image: peterukpabi4/prime-choice-app:v1
+          image: susan22283/prime-choice:v2
           ports:
             - containerPort: 8000
           envFrom:

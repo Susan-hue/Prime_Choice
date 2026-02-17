@@ -11,7 +11,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'
-        DOCKERHUB_USERNAME = 'peterukpabi4'
+        DOCKERHUB_USERNAME = 'susan22283'
         
         IMAGE_NAME  = 'prime-choice-app'
         EKS_CLUSTER_NAME = 'my-cluster'
